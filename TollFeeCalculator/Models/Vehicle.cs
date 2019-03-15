@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using TollFeeCalculator.Types;
 
-namespace TollFeeCalculator
+namespace TollFeeCalculator.Models
 {
-    public interface Vehicle
+    public class Vehicle
     {
-        string GetVehicleType();
+        public readonly VehicleType VehicleType;
+
+        public Vehicle(VehicleType vehicleType)
+        {
+            VehicleType = vehicleType;
+        }
     }
 }
