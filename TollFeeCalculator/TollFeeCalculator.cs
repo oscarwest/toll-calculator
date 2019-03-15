@@ -4,7 +4,7 @@ using TollFeeCalculator.Models;
 
 namespace TollFeeCalculator
 {
-    public class TollFeeCalculator
+    public class Calculator
     {
 
         /**
@@ -72,12 +72,7 @@ namespace TollFeeCalculator
         {
             if (vehicle == null) return false;
             var vehicleType = vehicle.VehicleType.ToString();
-            return vehicleType.Equals(TollFreeVehicles.Motorbike.ToString()) ||
-                vehicleType.Equals(TollFreeVehicles.Tractor.ToString()) ||
-                vehicleType.Equals(TollFreeVehicles.Emergency.ToString()) ||
-                vehicleType.Equals(TollFreeVehicles.Diplomat.ToString()) ||
-                vehicleType.Equals(TollFreeVehicles.Foreign.ToString()) ||
-                vehicleType.Equals(TollFreeVehicles.Military.ToString());
+            return false;
         }
 
         private Boolean IsTollFreeDate(DateTime date)
