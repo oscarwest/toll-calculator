@@ -1,103 +1,104 @@
-﻿using System;
-using System.Globalization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using TollFeeCalculator.Models;
+using TollFeeCalculator.Types;
+using Microsoft.Extensions.Logging;
+using Nager.Date;
 
 namespace TollFeeCalculator
 {
-    public class Calculator
+
+    public class Calculator : ITollFeeCalculator
     {
+        private readonly IDictionary<TimeSpan, decimal> _feeSchedule;
+        private readonly decimal _maxFee;
+        private readonly ILogger<Calculator> _logger;
+
+        public Calculator(IDictionary<TimeSpan, decimal> feeSchedule, decimal maxFee, ILogger<Calculator> logger)
+        {
+            _feeSchedule = feeSchedule;
+            _maxFee = maxFee;
+            _logger = logger;
+        }
 
         /**
-        * Calculate the total toll fee for one day
+        * Calculate the total toll fee for one day given a list of DateTimeOffset's
         *
         * @param vehicle - the vehicle
         * @param dates   - date and time of all passes on one day
         * @return - the total toll fee for that day
         */
-
-        public int GetTollFee(Vehicle vehicle, DateTime[] dates)
+        public decimal GetTollFeesForOneDay(Vehicle vehicle, IEnumerable<DateTimeOffset> passes)
         {
-            DateTime intervalStart = dates[0];
-            int totalFee = 0;
-            foreach (DateTime date in dates)
+            if (vehicle == null) throw new ArgumentNullException(nameof(vehicle));
+            if (!passes.Any()) throw new ArgumentNullException(nameof(passes));
+            if (passes.GroupBy(x => x.Date).Count() > 1) throw new ArgumentOutOfRangeException("All passes need to be on the same day");
+
+            if (IsTollFreeVehicle(vehicle))
+                return 0m;
+
+            var totalFee = passes
+                .Sum(date => {
+                    return GetTollFee(vehicle, date);
+                });
+
+            if (totalFee > 60m)
             {
-                int nextFee = GetTollFee(vehicle, date);
-                int tempFee = GetTollFee(vehicle, intervalStart);
-
-                long diffInMillies = date.Millisecond - intervalStart.Millisecond;
-                long minutes = diffInMillies/1000/60;
-
-                if (minutes <= 60)
-                {
-                    if (totalFee > 0) totalFee -= tempFee;
-                    if (nextFee >= tempFee) tempFee = nextFee;
-                    totalFee += tempFee;
-                }
-                else
-                {
-                    totalFee += nextFee;
-                }
+                _logger.LogInformation($"Vehicle {vehicle.RegistrationNumber} hit toll fee limit on {passes.First()}");
+                return 60m;
             }
-            if (totalFee > 60) totalFee = 60;
+
             return totalFee;
         }
 
         /**
-        * Calculate the total toll fee for a given DateTime
+        * Calculate the total toll fee for a given DateTimeOffset
         *
         * @param vehicle - the vehicle
         * @param date   - date and time of the pass
-        * @return - the toll fee for pass
+        * @return - the toll fee for the pass
         */
-        public int GetTollFee(Vehicle vehicle, DateTime date)
+        public decimal GetTollFee(Vehicle vehicle, DateTimeOffset pass)
         {
-            if (IsTollFreeDate(date) || IsTollFreeVehicle(vehicle)) return 0;
+            if (vehicle == null) throw new ArgumentNullException(nameof(vehicle));
 
-            int hour = date.Hour;
-            int minute = date.Minute;
+            if (IsTollFreeDate(pass) || IsTollFreeVehicle(vehicle))
+                return 0m;
 
-            if (hour == 6 && minute >= 0 && minute <= 29) return 8;
-            else if (hour == 6 && minute >= 30 && minute <= 59) return 13;
-            else if (hour == 7 && minute >= 0 && minute <= 59) return 18;
-            else if (hour == 8 && minute >= 0 && minute <= 29) return 13;
-            else if (hour >= 8 && hour <= 14 && minute >= 30 && minute <= 59) return 8;
-            else if (hour == 15 && minute >= 0 && minute <= 29) return 13;
-            else if (hour == 15 && minute >= 0 || hour == 16 && minute <= 59) return 18;
-            else if (hour == 17 && minute >= 0 && minute <= 59) return 13;
-            else if (hour == 18 && minute >= 0 && minute <= 29) return 8;
-            else return 0;
+            var result = _feeSchedule
+                .LastOrDefault(x => x.Key <= pass.TimeOfDay)
+                .Value;
+
+            return result;
         }
 
         private bool IsTollFreeVehicle(Vehicle vehicle)
         {
-            if (vehicle == null) return false;
-            var vehicleType = vehicle.VehicleType.ToString();
-            return false;
+            switch (vehicle.VehicleType)
+            {
+                case VehicleType.Car:
+                case VehicleType.Motorbike:
+                case VehicleType.Tractor:
+                    return false;
+                case VehicleType.Emergency:
+                case VehicleType.Diplomat:
+                case VehicleType.Foreign:
+                case VehicleType.Military:
+                    return true;
+                default:
+                    _logger.LogError($"Unhandled VehicleType {nameof(vehicle.VehicleType)} in IsTollFreeVehicle Check");
+                    break;
+            }
+
+            return true;
         }
 
-        private Boolean IsTollFreeDate(DateTime date)
+        private bool IsTollFreeDate(DateTimeOffset date)
         {
-            int year = date.Year;
-            int month = date.Month;
-            int day = date.Day;
+            var dateTime = date.UtcDateTime;
 
-            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday) return true;
-
-            if (year == 2013)
-            {
-                if (month == 1 && day == 1 ||
-                    month == 3 && (day == 28 || day == 29) ||
-                    month == 4 && (day == 1 || day == 30) ||
-                    month == 5 && (day == 1 || day == 8 || day == 9) ||
-                    month == 6 && (day == 5 || day == 6 || day == 21) ||
-                    month == 7 ||
-                    month == 11 && day == 1 ||
-                    month == 12 && (day == 24 || day == 25 || day == 26 || day == 31))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return DateSystem.IsPublicHoliday(dateTime, CountryCode.SE) || DateSystem.IsWeekend(dateTime, CountryCode.SE);
         }
     }
 }
