@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package >
+    <metadata>
+    <id>TollCalculator</id>
+    <version>0.0.1</version>
+    <title>AppLogger</title>
+    <authors>Oscar West</authors>
+    <description>Netstandard2.0 lib for calculating toll fees.</description>
+    </metadata>
+</package>
