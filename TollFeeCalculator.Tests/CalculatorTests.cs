@@ -145,9 +145,9 @@ namespace TollFeeCalculator.Tests
         {
             var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
 
-            var fee = calc.GetTollFee(vehicle, passTimes);
+            var fees = calc.GetTollFee(vehicle, passTimes);
 
-            Assert.Equal(expectedFee, fee.Sum(p => p.Amount));
+            Assert.Equal(expectedFee, fees.Sum(p => p.Amount));
         }
 
         [Fact]
@@ -198,7 +198,7 @@ namespace TollFeeCalculator.Tests
                         new DateTimeOffset(new DateTime(2019, 3, 13, 6, 0, 0), TimeZoneOffset),     // 8
                         new DateTimeOffset(new DateTime(2019, 3, 13, 6, 30, 0), TimeZoneOffset),     // 18
                         new DateTimeOffset(new DateTime(2019, 3, 14, 6, 0, 0), TimeZoneOffset),     // 18
-                        new DateTimeOffset(new DateTime(2019, 3, 13, 6, 30, 0), TimeZoneOffset),     // 18
+                        new DateTimeOffset(new DateTime(2019, 3, 14, 6, 30, 0), TimeZoneOffset),     // 18
                     },
                     16m
                 }
@@ -210,9 +210,9 @@ namespace TollFeeCalculator.Tests
         {
             var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
 
-            var fee = calc.GetTollFee(vehicle, passTimes);
+            var fees = calc.GetTollFee(vehicle, passTimes);
 
-            Assert.Equal(expectedFee, fee.Sum(p => p.Amount));
+            Assert.Equal(expectedFee, fees.Sum(p => p.Amount));
         }
 
         /**

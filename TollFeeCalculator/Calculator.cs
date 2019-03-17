@@ -17,6 +17,7 @@ namespace TollFeeCalculator
 
         public Calculator(IDictionary<TimeSpan, decimal> feeSchedule, decimal maxFee, ILogger<Calculator> logger)
         {
+            // TODO: Setup with some kind of options
             _feeSchedule = feeSchedule;
             _maxFee = maxFee;
             _logger = logger;
