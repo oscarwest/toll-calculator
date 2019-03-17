@@ -6,7 +6,7 @@ namespace TollFeeCalculator
 {
     public interface ITollFeeCalculator
     {
-        decimal GetTollFeesForOneDay(Vehicle vehicle, IEnumerable<DateTimeOffset> passes);
-        decimal GetTollFee(Vehicle vehicle, DateTimeOffset pass);
+        IEnumerable<TollFee> GetTollFee(Vehicle vehicle, IEnumerable<DateTimeOffset> passes);
+        TollFee GetTollFee(Vehicle vehicle, DateTimeOffset pass);
     }
 }

@@ -29,7 +29,7 @@ namespace TollFeeCalculator.Tests
             };
 
         /**
-        *** GetTollFee
+        *** GetTollFee single passes
         **/
 
         // Needs to be public because of xUnit
@@ -61,7 +61,7 @@ namespace TollFeeCalculator.Tests
             var fee = calc.GetTollFee(vehicle, passTime);
 
             // Assert
-            Assert.Equal(expectedFee, fee);
+            Assert.Equal(expectedFee, fee.Amount);
         }
         
         [Fact]
@@ -69,14 +69,9 @@ namespace TollFeeCalculator.Tests
         {
             var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
 
-            try
-            {
-                var fee = calc.GetTollFee(null, new DateTimeOffset(new DateTime(2019, 3, 13, 0, 0, 0), TimeZoneOffset));
-            }
-            catch (Exception e)
-            {
-                Assert.IsType<ArgumentNullException>(e);
-            }
+            Action act = () => calc.GetTollFee(null, new DateTimeOffset(new DateTime(2019, 3, 13, 0, 0, 0), TimeZoneOffset));
+
+            Assert.Throws<ArgumentNullException>(act);
         }
 
         [Theory]
@@ -94,11 +89,11 @@ namespace TollFeeCalculator.Tests
 
             var fee = calc.GetTollFee(vehicle, new DateTimeOffset(new DateTime(2019, 3, 13, 6, 0, 0), TimeZoneOffset));
 
-            Assert.Equal(expectedFee, fee);
+            Assert.Equal(expectedFee, fee.Amount);
         }
 
         /**
-        *** GetTollFeesForOneDay 
+        *** GetTollFee multiple passes same day
         **/
 
         // Needs to be public because of xUnit
@@ -130,15 +125,15 @@ namespace TollFeeCalculator.Tests
                     },
                     8m
                 },
-                // Five passes, not within 1 hour, totaling 70, expect the max 60m
+                // Five passes, none within 1 hour of eachother, totaling 70, expect the max 60m
                 new object[] {
                     new Vehicle(VehicleType.Car, "ABC123"),
                     new [] {
-                        new DateTimeOffset(new DateTime(2019, 3, 13, 6, 0, 0), TimeZoneOffset),
-                        new DateTimeOffset(new DateTime(2019, 3, 13, 7, 1, 0), TimeZoneOffset),
-                        new DateTimeOffset(new DateTime(2019, 3, 13, 8, 2, 0), TimeZoneOffset),
-                        new DateTimeOffset(new DateTime(2019, 3, 13, 15, 0, 0), TimeZoneOffset),
-                        new DateTimeOffset(new DateTime(2019, 3, 13, 16, 1, 0), TimeZoneOffset)
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 6, 0, 0), TimeZoneOffset),     // 8
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 7, 1, 0), TimeZoneOffset),     // 18
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 8, 2, 0), TimeZoneOffset),     // 13
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 15, 0, 0), TimeZoneOffset),    // 13
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 16, 1, 0), TimeZoneOffset)     // 18
                     },
                     60m
                 },
@@ -150,9 +145,9 @@ namespace TollFeeCalculator.Tests
         {
             var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
 
-            var fee = calc.GetTollFeesForOneDay(vehicle, passTimes);
+            var fee = calc.GetTollFee(vehicle, passTimes);
 
-            Assert.Equal(expectedFee, fee);
+            Assert.Equal(expectedFee, fee.Sum(p => p.Amount));
         }
 
         [Fact]
@@ -160,33 +155,9 @@ namespace TollFeeCalculator.Tests
         {
             var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
 
-            try
-            {
-                var fee = calc.GetTollFeesForOneDay(null, new[] { new DateTimeOffset(new DateTime(2019, 3, 13, 0, 0, 0), TimeZoneOffset) });
-            }
-            catch (Exception e)
-            {
-                Assert.IsType<ArgumentNullException>(e);
-            }
-        }
+            Action act = () => calc.GetTollFee(null, new[] { new DateTimeOffset(new DateTime(2019, 3, 13, 0, 0, 0), TimeZoneOffset) });
 
-        [Fact]
-        public void GetTollFeesForMultiplePasses_PassesOnMultipleDays_ThrowsException()
-        {
-            var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
-            var passes = new[] {
-                new DateTimeOffset(new DateTime(2019, 3, 13, 0, 0, 0), TimeZoneOffset),
-                new DateTimeOffset(new DateTime(2019, 3, 14, 0, 0, 0), TimeZoneOffset)
-            };
-
-            try
-            {
-                var fee = calc.GetTollFeesForOneDay(new Vehicle(VehicleType.Car, "ABC123"), passes);
-            }
-            catch (Exception e)
-            {
-                Assert.IsType<ArgumentOutOfRangeException>(e);
-            }
+            Assert.Throws<ArgumentNullException>(act);
         }
 
         [Fact]
@@ -195,15 +166,58 @@ namespace TollFeeCalculator.Tests
             var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
             var passes = Enumerable.Empty<DateTimeOffset>();
 
-            try
-            {
-                var fee = calc.GetTollFeesForOneDay(new Vehicle(VehicleType.Car, "ABC123"), passes);
-            }
-            catch (Exception e)
-            {
-                Assert.IsType<ArgumentNullException>(e);
-            }
+            Action act = () => calc.GetTollFee(new Vehicle(VehicleType.Car, "ABC123"), passes);
+
+            Assert.Throws<ArgumentNullException>(act);
         }
+
+        /**
+        *** GetTollFee multiple passes same day
+        **/    
+
+        // Needs to be public because of xUnit
+        public static IEnumerable<object[]> MultiplePassesMultipleRegularDaysNonFreeVehicleData => 
+            new object[][] {
+                // Multiple passes, none within 1 hour of eachother
+                new object[] {
+                    new Vehicle(VehicleType.Car, "ABC123"),
+                    new [] {
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 6, 0, 0), TimeZoneOffset),     // 8
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 7, 1, 0), TimeZoneOffset),     // 18
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 8, 2, 0), TimeZoneOffset),     // 13
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 15, 0, 0), TimeZoneOffset),    // 13
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 16, 1, 0), TimeZoneOffset),     // 18
+                        new DateTimeOffset(new DateTime(2019, 3, 14, 6, 0, 0), TimeZoneOffset)     // 18
+                    },
+                    68m
+                },
+                // Multiple passes, some within 1 hour of eachother
+                new object[] {
+                    new Vehicle(VehicleType.Car, "ABC123"),
+                    new [] {
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 6, 0, 0), TimeZoneOffset),     // 8
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 6, 30, 0), TimeZoneOffset),     // 18
+                        new DateTimeOffset(new DateTime(2019, 3, 14, 6, 0, 0), TimeZoneOffset),     // 18
+                        new DateTimeOffset(new DateTime(2019, 3, 13, 6, 30, 0), TimeZoneOffset),     // 18
+                    },
+                    16m
+                }
+            };
+
+        [Theory]
+        [MemberData(nameof(MultiplePassesMultipleRegularDaysNonFreeVehicleData))]
+        public void GetTollFeesForMultiplePasses_MultipleDays_ReturnsCorrectFee(Vehicle vehicle,  IEnumerable<DateTimeOffset> passTimes, decimal expectedFee)
+        {
+            var calc = new Calculator(_feeSchedule, MAX_FEE, A.Fake<ILogger<Calculator>>());
+
+            var fee = calc.GetTollFee(vehicle, passTimes);
+
+            Assert.Equal(expectedFee, fee.Sum(p => p.Amount));
+        }
+
+        /**
+        *** Free dates tests
+        **/        
 
         // Needs to be public because of xUnit
         public static IEnumerable<object[]> SinglePassWeekendsAndHolidaysNonFreeVehicleData => 
@@ -222,7 +236,7 @@ namespace TollFeeCalculator.Tests
 
             var fee = calc.GetTollFee(vehicle, passTime);
 
-            Assert.Equal(expectedFee, fee);
+            Assert.Equal(expectedFee, fee.Amount);
         }
 
     }
