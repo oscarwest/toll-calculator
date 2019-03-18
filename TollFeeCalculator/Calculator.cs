@@ -5,6 +5,7 @@ using TollFeeCalculator.Models;
 using TollFeeCalculator.Types;
 using Microsoft.Extensions.Logging;
 using Nager.Date;
+using System.Collections.ObjectModel;
 
 namespace TollFeeCalculator
 {
@@ -41,7 +42,7 @@ namespace TollFeeCalculator
 
             var nextDebitableTime = DateTimeOffset.MinValue;
             var currentDate = DateTimeOffset.MinValue;
-            var tollFees = new List<TollFee>();
+            var tollFees = new Collection<TollFee>();
             var dailyTotalFee = 0m;
 
             foreach (var pass in passes.OrderBy(p => p.DateTime))
@@ -83,7 +84,7 @@ namespace TollFeeCalculator
                 dailyTotalFee += fee;
             }
 
-            return tollFees;
+            return tollFees.ToArray();
         }
 
         /**
